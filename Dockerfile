@@ -15,10 +15,13 @@ ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG ARCH="amd64"
 ARG OS="linux"
-ARG VER="RELEASE.2023-05-18T00-05-36Z"
+ARG VER="20230518000536.0.0"
+ARG MINIO_VER="${VER}"
+ARG MC_VER="20230518165900.0.0"
 ARG BLD="01"
 ARG PKG="minio"
-ARG MINIO_SRC=""
+ARG MINIO_SRC="https://dl.min.io/server/minio/release/linux-amd64/minio-${MINIO_VER}.x86_64.rpm"
+ARG MC_SRC="https://dl.min.io/client/mc/release/linux-amd64/mcli-${MC_VER}.x86_64.rpm"
 ARG APP_USER="minio"
 ARG APP_UID="33000"
 ARG APP_GROUP="${APP_USER}"
@@ -32,6 +35,7 @@ ARG OS
 ARG VER
 ARG PKG
 ARG MINIO_SRC
+ARG MC_SRC
 ARG APP_USER
 ARG APP_UID
 ARG APP_GROUP
@@ -45,9 +49,13 @@ LABEL ORG="ArkCase LLC" \
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN yum -y update && \
+    curl -kL -o /minio.rpm "${MINIO_SRC}" && \
+    curl -kL -o /mc.rpm "${MC_SRC}" && \
     yum -y install \
         sudo \
     && \
+    yum -y install /minio.rpm && \
+    yum -y install /mc.rpm && \
     yum -y clean all && \
     groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     useradd -u "${APP_UID}" -g "${APP_GROUP}" "${APP_USER}"
@@ -62,6 +70,5 @@ RUN chmod 0755 /entrypoint && \
 
 USER "${APP_USER}"
 
-EXPOSE 9000
 VOLUME [ "/app/data" ]
 ENTRYPOINT [ "/entrypoint" ]
