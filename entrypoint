@@ -26,7 +26,7 @@ render_data_arg() {
 	local NODE_LIMIT="$(( ${NODES} - 1 ))"
 
 	if [ ${NODES} -gt 1 ] ; then
-		echo -n "http://${POD_NAME_TEMPLATE}{0..${NODE_LIMIT}}.$(echo -n "${HN[@]:1}" | /usr/bin/tr ' ' '.')${DATA_DIR}"
+		echo -n "http://${POD_NAME_TEMPLATE}{0...${NODE_LIMIT}}.$(echo -n "${HN[@]:1}" | /usr/bin/tr ' ' '.')${DATA_DIR}"
 	else
 		echo -n "${DATA_DIR}"
 	fi
