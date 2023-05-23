@@ -77,5 +77,6 @@ fi
 #
 [ -v MINIO_EXE ] || MINIO_EXE="/usr/local/bin/minio"
 
+DATA_ARG="$(render_data_arg "${NODES}" "${DATA_DIR}" "${POD_NAME_TEMPLATE}")"
 set -x
-echo "${MINIO_EXE}" server "$(render_data_arg "${NODES}" "${DATA_DIR}" "${POD_NAME_TEMPLATE}")" "${@}"
+exec "${MINIO_EXE}" server "${DATA_ARG}" "${@}"
