@@ -15,9 +15,9 @@ ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG ARCH="amd64"
 ARG OS="linux"
-ARG VER="20230518000536.0.0"
+ARG VER="20230602231726.0.0"
 ARG MINIO_VER="${VER}"
-ARG MC_VER="20230518165900.0.0"
+ARG MC_VER="20230530224138.0.0"
 ARG BLD="01"
 ARG PKG="minio"
 ARG MINIO_SRC="https://dl.min.io/server/minio/release/linux-amd64/minio-${MINIO_VER}.x86_64.rpm"
@@ -49,16 +49,15 @@ LABEL ORG="ArkCase LLC" \
 ENV PATH="/usr/local/bin:${PATH}"
 
 RUN yum -y update && \
-    curl -kL -o /minio.rpm "${MINIO_SRC}" && \
-    curl -kL -o /mc.rpm "${MC_SRC}" && \
     yum -y install \
         sudo \
+        "${MINIO_SRC}" \
+        "${MC_SRC}" \
     && \
-    yum -y install /minio.rpm && \
-    yum -y install /mc.rpm && \
     yum -y clean all && \
     groupadd -g "${APP_GID}" "${APP_GROUP}" && \
-    useradd -u "${APP_UID}" -g "${APP_GROUP}" "${APP_USER}"
+    useradd -u "${APP_UID}" -g "${APP_GROUP}" "${APP_USER}" && \
+    chown -R "${APP_UID}:${APP_GID}" "${HOME}"
 
 COPY --chown=root:root entrypoint /
 COPY --chown=root:root update-ssl /

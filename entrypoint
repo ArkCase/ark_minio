@@ -77,6 +77,8 @@ fi
 #
 [ -v MINIO_EXE ] || MINIO_EXE="/usr/local/bin/minio"
 
+[ -d "${DATA_DIR}/.minio.sys" ] || touch "${HOME}/.initRan"
+
 DATA_ARG="$(render_data_arg "${NODES}" "${DATA_DIR}" "${POD_NAME_TEMPLATE}")"
 set -x
 exec "${MINIO_EXE}" server "${DATA_ARG}" "${@}"
