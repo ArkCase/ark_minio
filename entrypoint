@@ -49,7 +49,14 @@ DATA_DIR="$(/usr/bin/readlink -f "${DATA_DIR}" | /usr/bin/sed -e 's;/$;;g')"
 #
 # Next, update the SSL trusts...
 #
-/update-ssl
+[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+acme-init
+
+# Copy the SSL certs into the required location
+[ -v CERT_DIR ] || CERT_DIR="${HOME}/certs"
+mkdir -p "${CERT_DIR}"
+cp -pv "${SSL_DIR}/cert.key" "${CERT_DIR}/private.key"
+cp -pv "${SSL_DIR}/cert.pem" "${CERT_DIR}/public.crt"
 
 #
 # Compute the name generation pattern
@@ -81,4 +88,4 @@ fi
 
 DATA_ARG="$(render_data_arg "${NODES}" "${DATA_DIR}" "${POD_NAME_TEMPLATE}")"
 set -x
-exec "${MINIO_EXE}" server "${DATA_ARG}" "${@}"
+exec "${MINIO_EXE}" server --certs-dir "${CERT_DIR}" "${DATA_ARG}" "${@}"

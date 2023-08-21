@@ -12,12 +12,13 @@
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
-ARG BASE_TAG="8.7.0"
+ARG BASE_TAG="8.8-01"
 ARG ARCH="amd64"
 ARG OS="linux"
-ARG VER="20230718174940.0.0"
+ARG VER="20230816201730.0.0"
+ARG BLD="01"
 ARG MINIO_VER="${VER}"
-ARG MC_VER="20230718210538.0.0"
+ARG MC_VER="20230815230309.0.0"
 ARG BLD="01"
 ARG PKG="minio"
 ARG MINIO_SRC="https://dl.min.io/server/minio/release/linux-amd64/archive/minio-${MINIO_VER}.x86_64.rpm"
@@ -56,7 +57,7 @@ RUN yum -y update && \
     && \
     yum -y clean all && \
     groupadd -g "${APP_GID}" "${APP_GROUP}" && \
-    useradd -u "${APP_UID}" -g "${APP_GROUP}" "${APP_USER}" && \
+    useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}"
 
 COPY --chown=root:root entrypoint /
