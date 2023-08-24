@@ -12,15 +12,13 @@
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
-ARG BASE_TAG="8.8-01"
+ARG BASE_TAG="8.8-02"
 ARG ARCH="amd64"
 ARG OS="linux"
 ARG VER="20230816201730.0.0"
-ARG BLD="01"
+ARG BLD="02"
 ARG MINIO_VER="${VER}"
 ARG MC_VER="20230815230309.0.0"
-ARG BLD="01"
-ARG PKG="minio"
 ARG MINIO_SRC="https://dl.min.io/server/minio/release/linux-amd64/archive/minio-${MINIO_VER}.x86_64.rpm"
 ARG MC_SRC="https://dl.min.io/client/mc/release/linux-amd64/archive/mcli-${MC_VER}.x86_64.rpm"
 ARG APP_USER="minio"
@@ -34,7 +32,6 @@ FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
 ARG ARCH
 ARG OS
 ARG VER
-ARG PKG
 ARG MINIO_SRC
 ARG MC_SRC
 ARG APP_USER
