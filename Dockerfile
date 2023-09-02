@@ -58,12 +58,6 @@ RUN yum -y update && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}"
 
 COPY --chown=root:root entrypoint /
-COPY --chown=root:root update-ssl /
-COPY --chown=root:root 00-update-ssl /etc/sudoers.d/
-
-RUN chmod 0755 /entrypoint && \
-    chmod 0640 /etc/sudoers.d/00-update-ssl && \
-    sed -i -e "s;\${ACM_GROUP};${APP_GROUP};g" /etc/sudoers.d/00-update-ssl
 
 USER "${APP_USER}"
 
