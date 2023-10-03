@@ -41,9 +41,9 @@ render_data_arg() {
 [[ "${DATA_DIR}" =~ ^/.* ]] || fail "The DATA_DIR value must be an absolute path: [${DATA_DIR}]"
 [ -e "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] does not exist"
 [ -d "${DATA_DIR}" ] || fail "The path [${DATA_DIR}] is not a directory"
-[ -r "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] does not readable"
-[ -w "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] does not writable"
-[ -x "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] does not executable"
+[ -r "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] is not readable"
+[ -w "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] is not writable"
+[ -x "${DATA_DIR}" ] || fail "The directory [${DATA_DIR}] is not executable"
 DATA_DIR="$(/usr/bin/readlink -f "${DATA_DIR}" | /usr/bin/sed -e 's;/$;;g')"
 
 #
