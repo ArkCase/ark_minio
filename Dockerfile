@@ -11,8 +11,6 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG BASE_REPO="arkcase/base"
-ARG BASE_TAG="8-02"
 ARG ARCH="amd64"
 ARG OS="linux"
 ARG VER="20230816201730.0.0"
@@ -26,8 +24,12 @@ ARG APP_UID="33000"
 ARG APP_GROUP="${APP_USER}"
 ARG APP_GID="1000"
 
+ARG BASE_REPO="arkcase/base"
+ARG BASE_VER="8"
+ARG BASE_IMG="${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_VER}"
+
 # Final Image
-FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
+FROM "${BASE_IMG}"
 
 ARG ARCH
 ARG OS
