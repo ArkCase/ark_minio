@@ -43,6 +43,16 @@ render_data_arg()
 [ -v DATA_DIR ] || DATA_DIR=""
 [ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
 
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="${DATA_DIR}"
+
+if [ -d "${LOGS_DIR}" ] ; then
+    LOG_FILE="${LOGS_DIR}/minio.log"
+    exec >> >(tee -a "${LOG_FILE}")
+    exec 2>&1
+    say "Logs redirected to [${LOG_FILE}]"
+fi
+
 #
 # First, validate the data directory
 #
