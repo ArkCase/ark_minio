@@ -2,24 +2,29 @@
 
 set -euo pipefail
 
-timestamp() {
+timestamp()
+{
 	date -Isec -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
+err()
+{
 	say "ERROR: ${@}" 1>&2
 }
 
-fail() {
+fail()
+{
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
 }
 
-render_data_arg() {
+render_data_arg()
+{
 	local NODES="${1}"
 	local DATA_DIR="${2}"
 	local POD_NAME_TEMPLATE="${3}"
@@ -32,8 +37,11 @@ render_data_arg() {
 	fi
 }
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v BASE_DIR ] || BASE_DIR=""
+[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+
+[ -v DATA_DIR ] || DATA_DIR=""
+[ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
 
 #
 # First, validate the data directory
@@ -49,11 +57,14 @@ DATA_DIR="$(/usr/bin/readlink -f "${DATA_DIR}" | /usr/bin/sed -e 's;/$;;g')"
 #
 # Next, update the SSL trusts...
 #
-[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+[ -v SSL_DIR ] || SSL_DIR=""
+[ -n "${SSL_DIR}" ] || SSL_DIR="/.ssl"
 acme-init
 
 # Copy the SSL certs into the required location
-[ -v CERT_DIR ] || CERT_DIR="${HOME}/certs"
+[ -v CERT_DIR ] || CERT_DIR=""
+[ -n "${CERT_DIR}" ] || CERT_DIR="${HOME}/certs"
+
 mkdir -p "${CERT_DIR}"
 cp -pv "${SSL_DIR}/cert.key" "${CERT_DIR}/private.key"
 cp -pv "${SSL_DIR}/cert.pem" "${CERT_DIR}/public.crt"
@@ -65,12 +76,14 @@ FQDN="$(/usr/bin/hostname -f)"
 HN=()
 readarray -t -d . HN < <(echo -n "${FQDN}")
 
-[ -v POD_NAME_TEMPLATE ] || POD_NAME_TEMPLATE="$(echo -n "${HN[0]}" | /usr/bin/sed -e 's;-[0-9]\+$;-;g')"
+[ -v POD_NAME_TEMPLATE ] || POD_NAME_TEMPLATE=""
+[ -n "${POD_NAME_TEMPLATE}" ] || POD_NAME_TEMPLATE="$(echo -n "${HN[0]}" | /usr/bin/sed -e 's;-[0-9]\+$;-;g')"
 
 #
 # First things first: how many nodes do we want to run?
 #
-[ -v NODES ] || NODES=1
+[ -v NODES ] || NODES=""
+[ -n "${NODES}" ] || NODES="1"
 [[ "${NODES}" =~ ^[0-9]+$ ]] || fail "The node count [${NODES}] is not valid"
 [ ${NODES} -lt 1 ] && NODES=1
 if [ ${NODES} -gt 1 ] ; then
@@ -82,7 +95,8 @@ fi
 #
 # In case we want to use a custom executable
 #
-[ -v MINIO_EXE ] || MINIO_EXE="/usr/local/bin/minio"
+[ -v MINIO_EXE ] || MINIO_EXE=""
+[ -n "${MINIO_EXE}" ] || MINIO_EXE="/usr/local/bin/minio"
 
 [ -d "${DATA_DIR}/.minio.sys" ] || touch "${HOME}/.initRan"
 
