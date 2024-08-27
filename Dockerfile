@@ -49,8 +49,7 @@ LABEL ORG="ArkCase LLC" \
 
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN yum -y update && \
-    yum -y install \
+RUN yum -y install \
         sudo \
         "${MINIO_SRC}" \
         "${MC_SRC}" \
