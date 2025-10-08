@@ -58,8 +58,9 @@ RUN export MINIO_DEB="/minio.deb" && \
     apt-get clean && \
     rm -fv "${MINIO_DEB}" "${MC_DEB}" && \
     groupadd -g "${APP_GID}" "${APP_GROUP}" && \
-    useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" "${APP_USER}" && \
-    chown -R "${APP_UID}:${APP_GID}" "${HOME}"
+    useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
+    chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
+    chmod -R g-w,o-rwx "${HOME}"
 
 COPY --chown=root:root --chmod=0755 entrypoint /
 
