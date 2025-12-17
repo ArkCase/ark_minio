@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [ ${#} -ne 1 ] ; then
+	echo "usage: ${0} VERSION"
+	exit 1
+fi
+
+VERSION="${1}"
+if [[ "${VERSION%%.*}" =~ ^[1-9][0-9]{13}$ ]] ; then
+	echo "${VERSION:0:4}-${VERSION:4:2}-${VERSION:6:2}T${VERSION:8:2}-${VERSION:10:2}-${VERSION:12:2}Z"
+	exit 0
+fi
+
+echo "ERROR: Version number [${VERSION}] could not be parsed as a date"
+exit 1
