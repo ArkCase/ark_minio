@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [ ${#} -lt 2 ] ; then
+	echo "usage: ${0} REPOSITORY VERSION [ fix-1 fix-2 fix-3 ... fix-N ]"
+	exit 1
+fi
+
+REPO="${1}"
+VERSION="${2}"
+shift 2
+
+echo "Building ${REPO} version [${VERSION}]"
+mkdir -p /src
+DIR="$(mktemp -d --tmpdir=/src)"
+
+cd "${DIR}"
+git clone "${REPO}" . --branch "${VERSION}"
+
+for FIX in "${@}" ; do
+	echo "Applying fix [${FIX}] ..."
+	go get -u "${FIX}"
+done
+
+go mod tidy
+
+exec go install -v
