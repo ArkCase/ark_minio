@@ -16,7 +16,7 @@ mkdir -p /src
 DIR="$(mktemp -d --tmpdir=/src)"
 
 cd "${DIR}"
-git clone "${REPO}" . --branch "${VERSION}"
+git clone "${REPO}" . --branch "RELEASE.${VERSION}"
 
 for FIX in "${@}" ; do
 	echo "Applying fix [${FIX}] ..."
@@ -25,4 +25,4 @@ done
 
 go mod tidy
 
-exec go install -v
+exec go install -v -ldflags "$(go run buildscripts/gen-ldflags.go "${VERSION}")"

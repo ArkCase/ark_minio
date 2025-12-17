@@ -57,9 +57,15 @@ ENV CRYPTO_FIX="golang.org/x/crypto@v0.45.0"
 ENV MQTT_FIX="github.com/eclipse/paho.mqtt.golang@v1.5.1"
 
 COPY --chmod=0755 version-to-date build /
-RUN V="RELEASE.$(/version-to-date "${MINIO_VER}")" && \
+
+# Build minio
+RUN export MINIO_RELEASE="RELEASE" && \
+    V="$(/version-to-date "${MINIO_VER}")" && \
     /build "${MINIO_SRC}" "${V}" "${CRYPTO_FIX}" "${MQTT_FIX}"
-RUN V="RELEASE.$(/version-to-date "${MC_VER}")" && \
+
+# Build mc
+RUN export MC_RELEASE="RELEASE" && \
+    V="$(/version-to-date "${MC_VER}")" && \
     /build "${MC_SRC}" "${V}" "${CRYPTO_FIX}"
 
 ARG BASE_IMG
