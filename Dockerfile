@@ -18,7 +18,7 @@ ARG VER="20251015172955.0.0"
 ARG MINIO_VER="${VER}"
 ARG MC_VER="20250813083541.0.0"
 
-ARG GO="1.24"
+ARG GO="1.25"
 
 ARG MINIO_SRC="https://github.com/minio/minio.git"
 ARG MC_SRC="https://github.com/minio/mc.git"
