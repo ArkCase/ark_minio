@@ -2,6 +2,22 @@
 
 set -euo pipefail
 . /.functions
+define_base_vars
+
+#
+# Configure FIPS
+#
+FIPS="false"
+FIPS_MODE="off"
+fips-enabled && FIPS_MODE="only" && FIPS="true"
+declare -xr FIPS
+
+#
+# Propagate FIPS to the GoLang stuff
+#
+set_or_default GODEBUG
+GODEBUG+="${GODEBUG:+,}fips140=${FIPS_MODE}"
+export GODEBUG
 
 render_data_arg()
 {
