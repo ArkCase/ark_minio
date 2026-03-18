@@ -3,6 +3,11 @@
 set -euo pipefail
 . /.functions
 
+#
+# First things first, FIPS!!
+#
+set_fips
+
 render_data_arg()
 {
 	local NODES="${1}"
