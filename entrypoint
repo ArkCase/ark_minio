@@ -3,6 +3,11 @@
 set -euo pipefail
 . /.functions
 
+#
+# Init all the SSL-related stuff
+#
+init_ssl
+
 render_data_arg()
 {
 	local NODES="${1}"
@@ -29,11 +34,6 @@ redirect_logs "${LOGS_DIR}/minio.log"
 [[ "${DATA_DIR}" =~ ^/.* ]] || fail "The DATA_DIR value must be an absolute path: [${DATA_DIR}]"
 require_dir_readwrite "${DATA_DIR}"
 DATA_DIR="$(/usr/bin/readlink -f "${DATA_DIR}" | /usr/bin/sed -e 's;/$;;g')"
-
-#
-# Next, update the SSL trusts...
-#
-init_ssl
 
 # Copy the SSL certs into the required location
 set_or_default CERT_DIR "${HOME}/certs"
