@@ -57,13 +57,26 @@ ENV GOARCH="amd64"
 # Build minio
 RUN --mount=type=bind,target=/src,rw \
     export MINIO_RELEASE="RELEASE" && \
-    V="$(/src/version-to-date "${MINIO_VER}")" && \
-    /src/build "${MINIO_SRC}" "${V}" minio
+    VERSION="$(/src/version-to-date "${MINIO_VER}")" && \
+    TAG="RELEASE.${VERSION}" && \
+    BUILD_PATH="$(mktemp -d --tmpdir=/src)" && \
+    cd "${BUILD_PATH}" && \
+    git clone "${MINIO_SRC}" . --branch "${TAG}" && \
+    /src/apply-patches minio && \
+    echo "Getting build flags" && \
+    LDFLAGS="$(go run buildscripts/gen-ldflags.go "${VERSION}" 2>&1)" || { echo "${LDFLAGS}" ; exit 1 ; } && \
+    go install -v -ldflags "${LDFLAGS}"
 
 # Build mc
 RUN --mount=type=bind,target=/src,rw \
-    V="$(/src/version-to-date "${MC_VER}")" && \
-    /src/build "${MC_SRC}" "${V}" mcli
+    VERSION="$(/src/version-to-date "${MC_VER}")" && \
+    TAG="RELEASE.${VERSION}" && \
+    BUILD_PATH="$(mktemp -d --tmpdir=/src)" && \
+    cd "${BUILD_PATH}" && \
+    git clone "${MC_SRC}" . --branch "${TAG}" && \
+    /src/apply-patches mcli && \
+    LDFLAGS="$(go run buildscripts/gen-ldflags.go "${VERSION}" 2>&1)" || { echo "${LDFLAGS}" ; exit 1 ; } && \
+    go install -v -ldflags "${LDFLAGS}"
 
 ARG BASE_IMG
 

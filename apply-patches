@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -euo pipefail
+
+CALLED="${BASH_ARGV0:-${BASH_SOURCE:-${0}}}"
+SCRIPT="$(readlink -f "${CALLED}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+SCRIPT="$(basename "${SCRIPT}")"
+
+timestamp()
+{
+	date -Ins -u
+}
+
+say()
+{
+	local SUFFIX=""
+	[ -v PARALLEL_ID ] && SUFFIX="|${!PARALLEL_ID}"
+	echo -e "$(timestamp) [${$}${SUFFIX}]: ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+if [ ${#} -lt 1 ] ; then
+	echo "usage: ${CALLED} fix-1 [ fix-2 fix-3 ... fix-N ]"
+	exit 1
+fi
+
+PATCHES_FILE="${BASEDIR}/patches.yaml"
+if [ -f "${PATCHES_FILE}" ] && [ -r "${PATCHES_FILE}" ] ; then
+	PATCHES_JSON="$("${BASEDIR}/yaml2json" < "${PATCHES_FILE}" 2>&1)" || fail "Failed to convert the fix file [${PATCHES_FILE}] to JSON (rc=${?}): ${PATCHES_JSON}"
+else
+	PATCHES_JSON="{}"
+fi
+
+POS=0
+for PATCH_SET in "${@}" ; do
+	[ -n "${PATCH_SET}" ] || fail "Invalid empty fix on position ${POS}"
+
+	PATCHES="$(jq -r --arg PATCH_SET "${PATCH_SET}" '.[$PATCH_SET]' <<< "${PATCHES_JSON}" 2>&1)" || fail "No fix set named [${PATCH_SET}] was found in the configuration (rc=${?}): ${PATCHES}"
+	say "Applying fix set [${PATCH_SET}] ..."
+
+	PATCHES="$(jq -r 'to_entries[] | "\(.key)@\(.value)"' <<< "${PATCHES}" 2>&1)" || fail "Failed to read the patch list for fix set [${PATCH_SET}] (rc=${?}): ${PATCHES}"
+	[ -n "${PATCHES}" ] || continue
+	say "Found the following patches for [${PATCH_SET}]:\n${PATCHES}"
+
+	while read PATCH ; do
+		[ -n "${PATCH}" ] || continue
+		say "Applying patch [${PATCH}] ..."
+		OUT="$(go get -u "${PATCH}" 2>&1)" || fail "Failed to apply the patch [${PATCH}] from fix set [${PATCH_SET}] (rc=${?}):\n${OUT}"
+		ok "Patch applied!"
+	done <<< "${PATCHES}"
+	(( ++POS ))
+done
+
+say "Go Tidy"
+exec go mod tidy
