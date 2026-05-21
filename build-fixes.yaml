@@ -1,9 +1,8 @@
 common: &common
   "golang.org/x/crypto": "v0.45.0"
   "google.golang.org/grpc": "v1.79.3"
-  "github.com/go-openapi/testify/enable/yaml/v2": "v2.0.2"
   "github.com/prometheus/prometheus": "v0.311.3"
-  "github.com/go-openapi/loads": "v0.22.0"
+  "github.com/go-openapi/loads": "v0.23.3"
 
 mcli:
   <<: *common
