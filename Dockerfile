@@ -47,27 +47,23 @@ ARG MINIO_SRC
 ARG MC_VER
 ARG MC_SRC
 
-RUN apk --no-cache add git bash
+RUN apk --no-cache add git bash jq py3-yaml
 
 ENV GO111MODULE="on"
 ENV CGO_ENABLED="0"
 ENV GOOS="linux"
 ENV GOARCH="amd64"
 
-ENV CRYPTO_FIX="golang.org/x/crypto@v0.45.0"
-ENV MQTT_FIX="github.com/eclipse/paho.mqtt.golang@v1.5.1"
-
-COPY --chmod=0755 version-to-date build /
-
 # Build minio
-RUN export MINIO_RELEASE="RELEASE" && \
-    V="$(/version-to-date "${MINIO_VER}")" && \
-    /build "${MINIO_SRC}" "${V}" "${CRYPTO_FIX}" "${MQTT_FIX}"
+RUN --mount=type=bind,target=/src,rw \
+    export MINIO_RELEASE="RELEASE" && \
+    V="$(/src/version-to-date "${MINIO_VER}")" && \
+    /src/build "${MINIO_SRC}" "${V}" minio
 
 # Build mc
-RUN export MC_RELEASE="RELEASE" && \
-    V="$(/version-to-date "${MC_VER}")" && \
-    /build "${MC_SRC}" "${V}" "${CRYPTO_FIX}"
+RUN --mount=type=bind,target=/src,rw \
+    V="$(/src/version-to-date "${MC_VER}")" && \
+    /src/build "${MC_SRC}" "${V}" mcli
 
 ARG BASE_IMG
 
@@ -94,7 +90,8 @@ COPY --chown=root:root --chmod=0755 --from=builder /go/bin/mc /usr/local/bin/mcl
 RUN groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
-    chmod -R g-w,o-rwx "${HOME}"
+    chmod -R g-w,o-rwx "${HOME}" && \
+    ln -s mc /usr/local/bin/mc
 
 COPY --chown=root:root --chmod=0755 entrypoint /
 
