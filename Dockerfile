@@ -19,13 +19,14 @@ ARG VER="20251015172955.0.0"
 ARG MINIO_VER="${VER}"
 ARG MC_VER="20250813083541.0.0"
 
-ARG GO="1.25"
+ARG GOVER="1.25"
+ARG GOFIPS140_VER="v1.0.0"
 
 ARG MINIO_SRC="https://github.com/minio/minio.git"
 ARG MC_SRC="https://github.com/minio/mc.git"
 
 ARG BUILDER_IMAGE="golang"
-ARG BUILDER_VER="${GO}-alpine"
+ARG BUILDER_VER="${GOVER}-alpine"
 ARG BUILDER_IMG="${BUILDER_IMAGE}:${BUILDER_VER}"
 
 ARG APP_USER="minio"
@@ -41,7 +42,8 @@ ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}${FIPS}:${BASE_VER_PFX}${BASE_VER}"
 
 FROM "${BUILDER_IMG}" AS builder
 
-ARG GO
+ARG GOVER
+ARG GOFIPS140_VER
 ARG MINIO_VER
 ARG MINIO_SRC
 ARG MC_VER
@@ -56,6 +58,10 @@ ENV GOARCH="amd64"
 
 # Build minio
 RUN --mount=type=bind,target=/src,rw \
+    if [ -n "${FIPS}" ]; then \
+        export GOFIPS140="${GOFIPS140_VER}"; \
+        echo "🔒 Building a FIPS-hardened Minio binary (GOFIPS140=${GOFIPS140})"; \
+    fi ; \
     export MINIO_RELEASE="RELEASE" && \
     VERSION="$(/src/version-to-date "${MINIO_VER}")" && \
     TAG="RELEASE.${VERSION}" && \
@@ -69,6 +75,10 @@ RUN --mount=type=bind,target=/src,rw \
 
 # Build mc
 RUN --mount=type=bind,target=/src,rw \
+    if [ -n "${FIPS}" ]; then \
+        export GOFIPS140="${GOFIPS140_VER}"; \
+        echo "🔒 Building a FIPS-hardened MC binary (GOFIPS140=${GOFIPS140})"; \
+    fi ; \
     VERSION="$(/src/version-to-date "${MC_VER}")" && \
     TAG="RELEASE.${VERSION}" && \
     BUILD_PATH="$(mktemp -d --tmpdir=/src)" && \
