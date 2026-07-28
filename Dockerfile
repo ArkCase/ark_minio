@@ -58,9 +58,9 @@ ENV GOARCH="amd64"
 
 # Build minio
 RUN --mount=type=bind,target=/src,rw \
-    if [ -n "${FIPS}" ]; then \
-        export GOFIPS140="${GOFIPS140_VER}"; \
-        echo "🔒 Building a FIPS-hardened Minio binary (GOFIPS140=${GOFIPS140})"; \
+    if [ -n "${FIPS}" ] ; then \
+        export GOFIPS140="${GOFIPS140_VER}" ; \
+        echo "🔒 Building a FIPS-hardened Minio binary (GOFIPS140=${GOFIPS140})" ; \
     fi ; \
     export MINIO_RELEASE="RELEASE" && \
     VERSION="$(/src/version-to-date "${MINIO_VER}")" && \
