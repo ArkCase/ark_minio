@@ -19,8 +19,8 @@ ARG VER="20251015172955.0.0"
 ARG MINIO_VER="${VER}"
 ARG MC_VER="20250813083541.0.0"
 
-ARG GOVER="1.25"
-ARG GOFIPS140_VER="v1.0.0"
+ARG GOVER="1.26"
+ARG GOFIPS140_VER="v1.26.0"
 
 ARG MINIO_SRC="https://github.com/minio/minio.git"
 ARG MC_SRC="https://github.com/minio/mc.git"
