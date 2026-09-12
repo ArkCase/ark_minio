@@ -22,8 +22,8 @@ ARG MC_VER="20250813083541.0.0"
 ARG GOVER="1.26"
 ARG GOFIPS140_VER="v1.26.0"
 
-ARG MINIO_SRC="https://github.com/minio/minio.git"
-ARG MC_SRC="https://github.com/minio/mc.git"
+ARG MINIO_SRC="https://github.com/ArkCase/minio"
+ARG MC_SRC="https://github.com/ArkCase/mc"
 
 ARG BUILDER_IMAGE="golang"
 ARG BUILDER_VER="${GOVER}-alpine"
