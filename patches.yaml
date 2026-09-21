@@ -11,7 +11,7 @@ minio:
   <<: *common
   "github.com/eclipse/paho.mqtt.golang": "v1.5.1"
   "github.com/rabbitmq/amqp091-go": "v1.13.0"
-  "go.opentelemetry.io/otel/sdk": "v1.43.0"
+  "go.opentelemetry.io/otel/sdk": "v1.45.0"
   "github.com/buger/jsonparser": "v1.1.2"
   "github.com/apache/thrift": "v0.24.0"
   "github.com/Azure/go-ntlmssp": "v0.1.1"
