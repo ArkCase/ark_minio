@@ -71,7 +71,9 @@ RUN --mount=type=bind,target=/src,rw \
     /src/apply-patches minio && \
     echo "Getting build flags" && \
     LDFLAGS="$(go run buildscripts/gen-ldflags.go "${VERSION}" 2>&1)" || { echo "${LDFLAGS}" ; exit 1 ; } && \
-    go install -v -ldflags "${LDFLAGS}"
+    go install -v -ldflags "${LDFLAGS}" && \
+    mkdir -p /minio.extra && \
+    cp -vf CREDITS LICENSE dockerscripts/docker-entrypoint.sh /minio.extra
 
 # Build mc
 RUN --mount=type=bind,target=/src,rw \
@@ -114,7 +116,9 @@ RUN groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
     chmod -R g-w,o-rwx "${HOME}" && \
-    ln -s mc /usr/local/bin/mc
+    ln -s mcli /usr/local/bin/mc
+COPY --chown=root:root --chmod=0444 --from=builder /minio.extra/LICENSE /minio.extra/CREDITS /
+COPY --chown=root:root --chmod=0755 --from=builder /minio.extra/docker-entrypoint.sh /legacy.docker-entrypoint.sh
 
 COPY --chown=root:root --chmod=0755 entrypoint /
 
