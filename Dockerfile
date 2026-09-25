@@ -118,7 +118,7 @@ RUN groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     chmod -R g-w,o-rwx "${HOME}" && \
     ln -s mcli /usr/local/bin/mc
 COPY --chown=root:root --chmod=0444 --from=builder /minio.extra/LICENSE /minio.extra/CREDITS /
-COPY --chown=root:root --chmod=0755 --from=builder /minio.extra/docker-entrypoint.sh /legacy.docker-entrypoint.sh
+COPY --chown=root:root --chmod=0755 --from=builder /minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh
 
 COPY --chown=root:root --chmod=0755 entrypoint /
 
