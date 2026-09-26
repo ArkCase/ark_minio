@@ -42,8 +42,8 @@ DATA_DIR="$(/usr/bin/readlink -f "${DATA_DIR}" | /usr/bin/sed -e 's;/$;;g')"
 set_or_default CERT_DIR "${HOME}/certs"
 
 ensure_dir "${CERT_DIR}"
-cp -pv "${SSL_DIR}/cert.key" "${CERT_DIR}/private.key"
-cp -pv "${SSL_DIR}/cert.pem" "${CERT_DIR}/public.crt"
+cp -pv "${SSL_PRIVATE_KEY}" "${CERT_DIR}/private.key"
+cp -pv "${SSL_CERTIFICATE}" "${CERT_DIR}/public.crt"
 
 #
 # Compute the name generation pattern
