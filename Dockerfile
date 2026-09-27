@@ -116,7 +116,8 @@ RUN groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
     chmod -R g-w,o-rwx "${HOME}" && \
-    ln -s mcli /usr/local/bin/mc
+    ln /usr/local/bin/mcli /usr/local/bin/mc && \
+    ln /usr/local/bin/minio /usr/local/bin/mc /usr/bin
 COPY --chown=root:root --chmod=0444 --from=builder /minio.extra/LICENSE /minio.extra/CREDITS /
 COPY --chown=root:root --chmod=0755 --from=builder /minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh
 
