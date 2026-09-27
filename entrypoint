@@ -4,7 +4,7 @@ set -euo pipefail
 . /.functions
 
 set_as_boolean LEGACY_MINIO_MODE "false"
-as_boolean "${LEGACY_MINIO_MODE}" && exec /usr/local/bin/legacy.docker-entrypoint.sh
+as_boolean "${LEGACY_MINIO_MODE}" && exec /usr/local/bin/legacy.docker-entrypoint.sh "${@}"
 
 #
 # Init all the SSL-related stuff
