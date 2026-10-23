@@ -1,4 +1,27 @@
 #!/bin/bash
+#
+# Raise the dependencies of a Go module to the minimum versions listed in
+# patches.yaml (next to this script).
+#
+# Every "module: version" entry in a fix set is a FLOOR ("at least this
+# version"), not a pin:
+#
+#   1. All floors from every fix set named on the command line are merged,
+#      keeping the highest version when a module appears more than once.
+#   2. Floors the module already meets are skipped, so nothing is lowered.
+#   3. The remaining floors are written into go.mod in a single edit, and
+#      "go mod tidy" resolves them together using Go's minimal version
+#      selection, which picks the highest version any requirement asks for.
+#      A floor can be exceeded when another module needs more, but a later
+#      patch can never undo an earlier one.
+#   4. Every floor is checked again after resolution, and the script fails
+#      if any floor did not hold for a module that is actually compiled.
+#
+# If any step fails, go.mod and go.sum are restored to their original state
+# (vendor/ is not restored).
+#
+# Run it from inside the Go module to patch (any directory under its go.mod).
+#
 
 set -euo pipefail
 
@@ -24,9 +47,14 @@ ok()
 	say "✅ ${@}"
 }
 
+warn()
+{
+	say "⚠️ ${@}"
+}
+
 err()
 {
-	say "❌ ${@}"
+	say "❌ ${@}" 1>&2
 }
 
 fail()
@@ -35,37 +63,244 @@ fail()
 	exit ${EXIT_CODE:-1}
 }
 
+yaml2json()
+{
+	command python3 <(cat <<-EOF
+	import yaml
+	import json
+	import sys
+	# Must use spaces to indent within the script
+	try:
+	    yaml_object = yaml.safe_load(sys.stdin)
+	    json.dump(yaml_object, sys.stdout)
+	except KeyboardInterrupt:
+	    sys.exit(1)
+	EOF
+	)
+}
+
 if [ ${#} -lt 1 ] ; then
 	echo "usage: ${CALLED} fix-1 [ fix-2 fix-3 ... fix-N ]"
 	exit 1
 fi
 
+for TOOL in go jq ; do
+	command -v "${TOOL}" &>/dev/null || fail "The required tool [${TOOL}] was not found in the PATH"
+done
+
+WORKDIR="$(mktemp -d)"
+
+# On failure, put go.mod and go.sum back the way they were (once they have
+# been backed up), so a failed run leaves the module untouched
+cleanup()
+{
+	local RC=${?}
+	rm -rf "${WORKDIR}" &>/dev/null || true
+	return ${RC}
+}
+trap cleanup EXIT
+
+# run DESCRIPTION COMMAND [ARGS...]
+#   Runs the command and passes its stdout through. Its stderr (download
+#   chatter, etc.) is only shown if the command fails.
+run()
+{
+	local DESC="${1}"
+	shift
+	"${@}" 2>"${WORKDIR}/stderr" || fail "${DESC} (rc=${?}):\n$(< "${WORKDIR}/stderr")"
+}
+
+################################################################################
+# jq helpers
+################################################################################
+
+read -r -d '' JQ_LIB <<'EOF' || true
+# The semver accepted by Go: vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+def semver_re: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$";
+
+# A sort key that orders versions by semver precedence: numeric core, then
+# release over prerelease, then prerelease identifiers (numeric ones below
+# alphanumeric ones, numeric compared as numbers). Build metadata such as
+# "+incompatible" is ignored, as Go does. Pseudo-versions are prereleases,
+# so they order correctly too.
+def semver_key:
+	(split("+")[0] | ltrimstr("v")) as $s
+	| ($s | index("-")) as $i
+	| (if $i == null then [$s, null] else [$s[:$i], $s[($i + 1):]] end) as [$core, $pre]
+	| ($core | split(".") | map(tonumber))
+	  + [ (if $pre == null then 1 else 0 end),
+	      (if $pre == null then [] else ($pre | split(".") | map(if test("^[0-9]+$") then [0, tonumber] else [1, .] end)) end) ];
+
+def ver_lt($a; $b): ($a | semver_key) < ($b | semver_key);
+EOF
+
+# Input: the patches file as JSON. Positional args: the fix set names.
+# Output: { "module": "highest floor across the named sets", ... }
+read -r -d '' JQ_MERGE <<'EOF' || true
+. as $cfg
+| if type != "object" then error("the patches file must be a map of fix set names to module maps") else . end
+| [ $ARGS.positional[] as $set
+	| if ($set | length) == 0 then error("invalid empty fix set name")
+	  elif ($cfg | has($set) | not) then error("no fix set named [\($set)] was found in the configuration")
+	  else ($cfg[$set] // {}) end
+	| if type != "object" then error("fix set [\($set)] must be a map of module path to version") else . end
+	| to_entries[]
+	| if ((.value | type) != "string") or ((.value | test(semver_re)) | not)
+	  then error("fix set [\($set)]: invalid version [\(.value)] for module [\(.key)] (expected vX.Y.Z)")
+	  else . end ]
+| group_by(.key)
+| map({ key: .[0].key, value: (map(.value) | max_by(semver_key)) })
+| from_entries
+EOF
+
+# Input: the module graph (from graph_json). Args: $floors, $required (the
+# go.mod require paths, or null to skip the "is it compiled" test).
+# Output: one TSV line per floor: STATUS MODULE FLOOR CURRENT
+read -r -d '' JQ_CLASSIFY <<'EOF' || true
+. as $graph
+| $floors | to_entries[]
+| .key as $m | .value as $want | $graph[$m] as $g
+| if $g == null then
+	["absent", $m, $want, "-"]
+  elif $g.replace != null then
+	($g.replace.Path + (if $g.replace.Version then "@" + $g.replace.Version else "" end)) as $r
+	| if ($g.replace.Path == $m) and ($g.replace.Version != null) then
+		(if ver_lt($g.replace.Version; $want) then ["replaced-low", $m, $want, $r] else ["ok", $m, $want, $r] end)
+	  else
+		["replaced", $m, $want, $r]
+	  end
+  elif ver_lt($g.version; $want) then
+	(if ($required != null) and ($required | any(. == $m) | not) then ["unused", $m, $want, $g.version]
+	 else ["low", $m, $want, $g.version] end)
+  else
+	["ok", $m, $want, $g.version]
+  end
+| @tsv
+EOF
+
+# Input: null. Args: $before, $after (go mod edit -json), $floors.
+# Output: one line per change to the go/toolchain directives or requirements.
+read -r -d '' JQ_CHANGES <<'EOF' || true
+def reqs: [ .Require[]? | { key: .Path, value: .Version } ] | from_entries;
+($before | reqs) as $b
+| ($after | reqs) as $a
+| (if $before.Go != $after.Go then "go directive: \($before.Go // "(none)") -> \($after.Go // "(none)")" else empty end),
+  (if $before.Toolchain != $after.Toolchain then "toolchain directive: \($before.Toolchain // "(none)") -> \($after.Toolchain // "(none)")" else empty end),
+  ( ($b + $a) | keys[] | select($b[.] != $a[.]) as $m
+	| "\($m): \($b[$m] // "(new)") -> \($a[$m] // "(removed)")"
+	  + (if $floors[$m] then "  [floor \($floors[$m])]" else "  [collateral]" end) )
+EOF
+
+# The non-main modules in the module graph, keyed by path
+graph_json()
+{
+	run "Failed to list the module graph" go list -mod=mod -m -json all | jq -s '[ .[] | select(.Main | not) | { key: .Path, value: { version: .Version, replace: .Replace } } ] | from_entries'
+}
+
+# classify FLOORS_JSON REQUIRED_JSON_OR_null < GRAPH_JSON
+classify()
+{
+	jq -r --argjson floors "${1}" --argjson required "${2}" "${JQ_LIB} ${JQ_CLASSIFY}"
+}
+
+################################################################################
+# Locate the module
+################################################################################
+
+GOMOD="$(run "Failed to locate the Go module" go env GOMOD)"
+case "${GOMOD}" in
+	"" | "/dev/null" ) fail "The current directory [${PWD}] is not inside a Go module" ;;
+esac
+cd "$(dirname "${GOMOD}")"
+say "Patching the Go module at [${PWD}]"
+
+################################################################################
+# Load and merge the requested fix sets
+################################################################################
+
 PATCHES_FILE="${BASEDIR}/patches.yaml"
 if [ -f "${PATCHES_FILE}" ] && [ -r "${PATCHES_FILE}" ] ; then
-	PATCHES_JSON="$("${BASEDIR}/yaml2json" < "${PATCHES_FILE}" 2>&1)" || fail "Failed to convert the fix file [${PATCHES_FILE}] to JSON (rc=${?}): ${PATCHES_JSON}"
+	PATCHES_JSON="$(yaml2json < "${PATCHES_FILE}" 2>&1)" || fail "Failed to convert the fix file [${PATCHES_FILE}] to JSON (rc=${?}): ${PATCHES_JSON}"
 else
 	PATCHES_JSON="{}"
 fi
 
-POS=0
-for PATCH_SET in "${@}" ; do
-	[ -n "${PATCH_SET}" ] || fail "Invalid empty fix on position ${POS}"
+FLOORS="$(jq -c "${JQ_LIB} ${JQ_MERGE}" --args "${@}" <<< "${PATCHES_JSON}" 2>&1)" || fail "Failed to read the fix set(s) [${*}] (rc=${?}): ${FLOORS}"
+if [ "${FLOORS}" = "{}" ] ; then
+	say "The fix set(s) [${*}] contain no patches"
+else
+	say "Minimum versions requested by fix set(s) [${*}]:\n$(jq -r 'to_entries[] | "\t\(.key) >= \(.value)"' <<< "${FLOORS}")"
+fi
 
-	PATCHES="$(jq -r --arg PATCH_SET "${PATCH_SET}" '.[$PATCH_SET]' <<< "${PATCHES_JSON}" 2>&1)" || fail "No fix set named [${PATCH_SET}] was found in the configuration (rc=${?}): ${PATCHES}"
-	say "Applying fix set [${PATCH_SET}] ..."
+################################################################################
+# Plan: work out which floors are not met yet
+################################################################################
 
-	PATCHES="$(jq -r 'to_entries[] | "\(.key)@\(.value)"' <<< "${PATCHES}" 2>&1)" || fail "Failed to read the patch list for fix set [${PATCH_SET}] (rc=${?}): ${PATCHES}"
-	[ -n "${PATCHES}" ] || continue
-	say "Found the following patches for [${PATCH_SET}]:\n${PATCHES}"
+GOMOD_BEFORE="$(run "Failed to read go.mod" go mod edit -json)"
+GRAPH="$(graph_json)"
+PLAN="$(classify "${FLOORS}" null <<< "${GRAPH}")"
 
-	while read PATCH ; do
-		[ -n "${PATCH}" ] || continue
-		say "Applying patch [${PATCH}] ..."
-		OUT="$(go get -u "${PATCH}" 2>&1)" || fail "Failed to apply the patch [${PATCH}] from fix set [${PATCH_SET}] (rc=${?}):\n${OUT}"
-		ok "Patch applied!"
-	done <<< "${PATCHES}"
-	(( ++POS ))
-done
+RAISE=()
+BLOCKED=0
+while IFS=$'\t' read -r STATUS MOD WANT HAVE ; do
+	[ -n "${STATUS}" ] || continue
+	case "${STATUS}" in
+		ok )           say "${MOD}: ${HAVE} already meets >= ${WANT}" ;;
+		absent )       say "${MOD}: not in the module graph, nothing to patch" ;;
+		low )          say "${MOD}: ${HAVE} is below ${WANT}, will raise it" ; RAISE+=( "-require=${MOD}@${WANT}" ) ;;
+		replaced-low ) err "${MOD}: a replace directive pins it to ${HAVE}, which is below ${WANT}. Replace directives override all requirements, so update the replace directive itself." ; BLOCKED=1 ;;
+		replaced )     err "${MOD}: a replace directive points it at ${HAVE}, which cannot be compared with ${WANT}. Remove this module from the fix set for this project, or drop the replace directive." ; BLOCKED=1 ;;
+		* )            fail "Internal error: unknown plan status [${STATUS}] for [${MOD}]" ;;
+	esac
+done <<< "${PLAN}"
+[ ${BLOCKED} -eq 0 ] || fail "Some patches cannot be applied because of replace directives (see above). Nothing was changed."
+
+################################################################################
+# Apply: one go.mod edit, then a single resolution
+################################################################################
+
+cp -f go.mod "${WORKDIR}/go.mod"
+[ ! -f go.sum ] || cp -f go.sum "${WORKDIR}/go.sum"
+
+if [ ${#RAISE[@]} -gt 0 ] ; then
+	say "Raising ${#RAISE[@]} requirement(s) in go.mod"
+	run "Failed to edit go.mod" go mod edit "${RAISE[@]}"
+fi
 
 say "Go Tidy"
-exec go mod tidy
+run "go mod tidy failed" go mod tidy
+
+if [ -f "vendor/modules.txt" ] ; then
+	say "Refreshing the vendor directory"
+	run "go mod vendor failed" go mod vendor
+fi
+
+################################################################################
+# Verify: every floor must hold for every module that is compiled
+################################################################################
+
+GOMOD_AFTER="$(run "Failed to read go.mod" go mod edit -json)"
+REQUIRED="$(jq -c '[ .Require[]?.Path ]' <<< "${GOMOD_AFTER}")"
+GRAPH="$(graph_json)"
+PLAN="$(classify "${FLOORS}" "${REQUIRED}" <<< "${GRAPH}")"
+
+FAILED=0
+while IFS=$'\t' read -r STATUS MOD WANT HAVE ; do
+	[ -n "${STATUS}" ] || continue
+	case "${STATUS}" in
+		ok )     ok "${MOD}: ${HAVE} (>= ${WANT})" ;;
+		absent ) ;;
+		unused ) warn "${MOD}: still ${HAVE} (< ${WANT}) in the module graph, but no package from it is imported, so go mod tidy dropped it from go.mod and it is not compiled" ;;
+		* )      err "${MOD}: resolved to ${HAVE}, below the required ${WANT} (${STATUS})" ; FAILED=1 ;;
+	esac
+done <<< "${PLAN}"
+
+CHANGES="$(jq -rn --argjson before "${GOMOD_BEFORE}" --argjson after "${GOMOD_AFTER}" --argjson floors "${FLOORS}" "${JQ_CHANGES}")"
+if [ -n "${CHANGES}" ] ; then
+	say "go.mod changes:\n$(sed -e 's/^/\t/' <<< "${CHANGES}")"
+else
+	say "go.mod is unchanged"
+fi
+
+[ ${FAILED} -eq 0 ] || fail "Some patches did not hold after resolution (see above)"
+ok "All patches are satisfied"
