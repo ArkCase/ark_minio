@@ -110,20 +110,17 @@ LABEL ORG="ArkCase LLC" \
       APP="MinIO Server" \
       VERSION="${VER}"
 
-COPY --chown=root:root --chmod=0755 --from=builder /go/bin/minio /usr/local/bin/minio
-COPY --chown=root:root --chmod=0755 --from=builder /go/bin/mc /usr/local/bin/mcli
-RUN groupadd -g "${APP_GID}" "${APP_GROUP}" && \
+RUN --mount=type=bind,target=/src \
+    --mount=type=bind,from=builder,target=/minio \
+    groupadd -g "${APP_GID}" "${APP_GROUP}" && \
     useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
     chmod -R g-w,o-rwx "${HOME}" && \
-    ln /usr/local/bin/mcli /usr/local/bin/mc && \
-    ln /usr/local/bin/minio /usr/local/bin/mcli /usr/local/bin/mc /usr/bin
-COPY --chown=root:root --chmod=0444 --from=builder /minio.extra/LICENSE /minio.extra/CREDITS /
-COPY --chown=root:root --chmod=0755 --from=builder /minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh
-
-COPY --chown=root:root --chmod=0755 entrypoint /
+    install -o root -g root -m 0755 -t /usr/local/bin /minio/go/bin/mc /minio/go/bin/minio && \
+    ln /usr/local/bin/mc /usr/local/bin/mcli && \
+    ln /usr/local/bin/minio /usr/local/bin/mc /usr/local/bin/mcli /usr/bin && \
+    install -o root -g root -m 0444 -t / /minio/minio.extra/LICENSE /minio/minio.extra/CREDITS && \
+    install -o root -g root -m 0755 /minio/minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh && \
+    install -o root -g root -m 0755 /src/entrypoint /usr/local/bin
 
 USER "${APP_USER}"
-
-VOLUME [ "/app/data" ]
-ENTRYPOINT [ "/entrypoint" ]
