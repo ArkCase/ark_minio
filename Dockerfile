@@ -121,6 +121,8 @@ RUN --mount=type=bind,target=/src \
     ln /usr/local/bin/minio /usr/local/bin/mc /usr/local/bin/mcli /usr/bin && \
     install -o root -g root -m 0444 -t / /minio/minio.extra/LICENSE /minio/minio.extra/CREDITS && \
     install -o root -g root -m 0755 /minio/minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh && \
-    install -o root -g root -m 0755 /src/entrypoint /usr/local/bin
+    install -o root -g root -m 0755 /src/entrypoint /usr/local/bin && \
+    chown -R "${APP_USER}:${APP_GROUP}" "${TEMP_DIR}" && \
+    chmod -R u=rwX,g=rX,o= "${TEMP_DIR}"
 
 USER "${APP_USER}"
