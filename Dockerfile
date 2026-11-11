@@ -111,10 +111,12 @@ LABEL ORG="ArkCase LLC" \
       APP="MinIO Server" \
       VERSION="${VER}"
 
+ENV HOME="/app/${APP_USER}"
+
 RUN --mount=type=bind,target=/src \
     --mount=type=bind,from=builder,target=/minio \
     groupadd -g "${APP_GID}" "${APP_GROUP}" && \
-    useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" -d "${HOME}" "${APP_USER}" && \
+    useradd -u "${APP_UID}" -g "${APP_GROUP}" -G "${ACM_GROUP}" --create-home -d "${HOME}" "${APP_USER}" && \
     chown -R "${APP_UID}:${APP_GID}" "${HOME}" && \
     chmod -R g-w,o-rwx "${HOME}" && \
     install -o root -g root -m 0755 -t /usr/local/bin /minio/go/bin/mc /minio/go/bin/minio && \
@@ -124,6 +126,8 @@ RUN --mount=type=bind,target=/src \
     install -o root -g root -m 0755 /minio/minio.extra/docker-entrypoint.sh /usr/local/bin/legacy.docker-entrypoint.sh && \
     install -o root -g root -m 0755 /src/entrypoint /usr/local/bin && \
     chown -R "${APP_USER}:${APP_GROUP}" "${TEMP_DIR}" && \
-    chmod -R u=rwX,g=rX,o= "${TEMP_DIR}"
+    chmod -R u=rwX,g=rX,o= "${TEMP_DIR}" && \
+    chown "${APP_USER}:${APP_GROUP}" "${LOGS_DIR}" && \
+    chmod u=rwx,g=rx,o= "${LOGS_DIR}"
 
 USER "${APP_USER}"
