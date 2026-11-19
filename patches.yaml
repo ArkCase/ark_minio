@@ -1,6 +1,6 @@
 common: &common
   "golang.org/x/net": "v0.62.0"
-  "golang.org/x/crypto": "v0.56.0"
+  "golang.org/x/crypto": "v0.59.0"
   "github.com/prometheus/prometheus": "v0.311.3"
   "github.com/go-openapi/loads": "v0.23.3"
   "github.com/klauspost/compress": "v1.18.7"
@@ -13,7 +13,7 @@ minio:
   <<: *common
   "github.com/eclipse/paho.mqtt.golang": "v1.5.1"
   "github.com/rabbitmq/amqp091-go": "v1.14.0"
-  "go.opentelemetry.io/otel/sdk": "v1.45.0"
+  "go.opentelemetry.io/otel/sdk": "v1.47.0"
   "github.com/buger/jsonparser": "v1.1.2"
   "github.com/apache/thrift": "v0.24.0"
   "github.com/Azure/go-ntlmssp": "v0.1.1"
